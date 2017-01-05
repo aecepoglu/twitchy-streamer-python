@@ -2,9 +2,8 @@ import argparse
 import yaml
 import collections
 import sys
-
-class MyError(Exception):
-	pass
+import os
+from .errors import MyError
 
 def _update(d, u):
 	for k, v in u.items():
@@ -17,14 +16,35 @@ def _update(d, u):
 def parse(args):
 	parser = argparse.ArgumentParser(description="TwitchyStreamer python client")
 
-	parser.add_argument("--config", "-c", action="append", help="/path/to/config.yaml (this argument can be supplied multiple times)", dest="configs")
+	parser.add_argument("path",
+		nargs = 1,
+		help = "File or folder to watch for changes"
+	)
+
+	parser.add_argument("-c",
+		action="append",
+		help="/path/to/config.yaml (this argument can be supplied multiple times)",
+		dest="configs",
+		metavar="FILE"
+	)
 
 	parsed = parser.parse_args(args)
 	result = {
 		#default values here
+		"target": parsed.path[0]
 	}
 
-	if not parsed.configs or len(parsed.configs) < 1:
+	if not parsed.configs:
+		if not isinstance(parsed.configs, list):
+			parsed.configs = []
+
+	configInTarget = os.path.join(parsed.path[0], "twitchy-config.yml")
+	if os.path.isdir(parsed.path[0]) and os.path.isfile(configInTarget):
+		parsed.configs.append(configInTarget)
+
+	if len(parsed.configs) == 0:
+		parser.print_help()
+		print("------")
 		raise MyError("You haven't entered any config files.\nYou can find a sample config file at http://something-something.yaml")
 
 	for path in parsed.configs:

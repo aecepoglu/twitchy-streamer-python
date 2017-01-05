@@ -1,6 +1,6 @@
 from behave import *
 from unittest.mock import patch, mock_open, MagicMock
-from src import arg_parser as myArgParser
+from src import arg_parser as myArgParser, errors as myErrors
 import io
 
 def setup_debug_on_error(userdata):
@@ -9,19 +9,26 @@ def setup_debug_on_error(userdata):
 def before_all(context):
 	setup_debug_on_error(context.config.userdata)
 def after_step(context, step):
+	raise step.exc_traceback
 	if step.status == "failed":
 		import ipdb
 		ipdb.post_mortem(step.exc_traceback)
 
-@given('a config file at "{filepath}"')
+def before_scenario(context):
+	pass
+
+@given('a file at "{filepath}"')
 def step_impl(context, filepath):
 	previousOpenMock = None
+	previousIsfileMock = None
 	content = context.text
 
 	if "openMock" in context:
 		previousOpenMock = context.openMock
+	if "isfileMock" in context:
+		previousIsfileMock = context.isfileMock
 
-	def myOpen(filename, openOpt="r"):
+	def my_open(filename, openOpt="r"):
 		assert(openOpt == "r")
 
 		if (filename == filepath):
@@ -31,35 +38,63 @@ def step_impl(context, filepath):
 		else:
 			raise FileNotFoundError(filename)
 
-	context.openMock = myOpen
+	def my_isfile(x):
+		if (x == filepath):
+			return True
+		elif previousIsfileMock:
+			return previousIsfileMock(x)
+		else:
+			return False
 
-@given('program arguments have config "{filepath}"')
-def step_impl(context, filepath):
-	if "cmdArgs" not in context:
-		context.cmdArgs = []
-	context.cmdArgs.append("-c")
-	context.cmdArgs.append(filepath)
+	context.openMock = my_open
+	context.isfileMock = my_isfile
+
+@given('a directory at "{path}" exists')
+def step_impl(context, path):
+	previousMock = None
+
+	if "isdirMock" in context:
+		previousMock = context.isdirMock
+
+	def my_isdir(x):
+		if (x == path):
+			return True
+		elif previousMock:
+			return previousMock(x)
+		else:
+			return False
+
+	context.isdirMock = my_isdir
+
+@given('program arguments are "{args}"')
+def step_impl(context, args):
+	context.cmdArgs = args.split()
 
 @when('it parses arguments')
 def step_impl(context):
-	#with patch("builtins.open", mock_open(read_data="publishLink: ahmet")):
 	if "openMock" not in context:
-		context.openMock = None
+		context.openMock = True
+	if "isfileMock" not in context:
+		context.isfileMock = MagicMock(return_value = False)
+	if "isdirMock" not in context:
+		context.isdirMock = MagicMock(return_value = False)
 
 	with patch("builtins.open", context.openMock):
-		try:
-			context.parsedArgs = myArgParser.parse(context.cmdArgs)
-			context.raisedException = False
-		except myArgParser.MyError as err:
-			context.raisedException = err
+		with patch("os.path.isfile", context.isfileMock):
+			with patch("os.path.isdir", context.isdirMock):
+				try:
+					context.parsedArgs = myArgParser.parse(context.cmdArgs)
+					context.raisedException = False
+				except myErrors.MyError as err:
+					context.raisedException = err
 
-@then('config should have "{pattern}" in "{targetList}" list')
+@then('config has "{pattern}" in "{targetList}" list')
 def step_impl(context, pattern, targetList):
 	assert(targetList in context.parsedArgs)
 	assert(isinstance(context.parsedArgs[targetList], list))
 	assert(pattern in context.parsedArgs[targetList])
 
-@then('config should have "{value}" at "{target}"')
+@then('config has "{value}" at "{target}"')
 def step_impl(context, value, target):
 	assert(target in context.parsedArgs)
 	assert(context.parsedArgs[target] == value)
