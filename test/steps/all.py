@@ -1,7 +1,9 @@
 from behave import *
 from unittest.mock import patch, mock_open, MagicMock
-from src import arg_parser as myArgParser, errors as myErrors
+from src import arg_parser as myArgParser, server_checker as myServerChecker, errors as myErrors
 import io
+import requests
+import requests_mock
 
 def setup_debug_on_error(userdata):
 	global BEHAVE_DEBUG_ON_ERROR
@@ -121,34 +123,50 @@ def step_impl(context):
 	assert("publishLink" in str(context.raisedException))
 	#TODO may be improve this a bit
 
-@given('a server exists')
-def step_impl(context):
-	raise NotImplementedError('STEP: Given a server exists')
+@given(u'a server at "{host}" responds to "{method}" "{path}" with "{responseText}"')
+def step_impl(context, host, method, path, responseText):
+	_addr = host + path
+	_responseText = responseText
+	_method = method
+	previousRegistrar = None
 
-@given('it will verify my version-check')
-def step_impl(context):
-	raise NotImplementedError('STEP: Given it will verify my version-check')
+	if "registerRequestsMock" in context:
+		previousRegistrar = context.registerRequestsMock
 
-@when('it checks for version')
-def step_impl(context):
-	raise NotImplementedError('STEP: When it checks for version')
+	def fun(mocker):
+		mocker.register_uri(_method, _addr, text = _responseText)
 
-@then('it should successfully proceed')
-def step_impl(context):
-	raise NotImplementedError('STEP: Then it should successfully proceed')
+		if previousRegistrar:
+			previousRegistrar()
 
-@given('it verifies my version-check but a newer version exists')
-def step_impl(context):
-	raise NotImplementedError('STEP: Given it verifies my version-check but a newer version exists')
+	context.registerRequestsMock = fun
 
-@then('it should notify me about the newer version')
-def step_impl(context):
-	raise NotImplementedError('STEP: Then it should notify me about the newer version')
+@given(u'my config has "{value}" as "{key}"')
+def step_impl(context, value, key):
+	if "myConfig" not in context:
+		context.myConfig = {}
+	context.myConfig[key] = value
 
-@given('it doesn\'t support my version')
+@when(u'it checks for version')
 def step_impl(context):
-	raise NotImplementedError('STEP: Given it doesn\'t support my version')
+	try:
+		with requests_mock.Mocker() as m:
+			context.registerRequestsMock(m)
+			myServerChecker.check(context.myConfig)
 
-@then('it should fail and show a warning')
+		context.raisedException = False
+	except myErrors.MyError as err:
+		context.raisedException = err
+
+@then(u'it should succeed')
 def step_impl(context):
-	raise NotImplementedError('STEP: Then it should fail and show a warning')
+	assert(not context.raisedException)
+
+@then(u'it should notify me about the newer version')
+def step_impl(context):
+	#TODO I need to verify this somehow
+	pass
+
+@then(u'give me version incompatibility error')
+def step_impl(context):
+	assert("no longer supported" in str(context.raisedException))

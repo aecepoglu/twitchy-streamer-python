@@ -1,2 +1,4 @@
 pyyaml
 argparse
+semver
+requests
