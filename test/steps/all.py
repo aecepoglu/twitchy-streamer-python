@@ -1,6 +1,6 @@
 from behave import *
 from unittest.mock import patch, mock_open, MagicMock
-from src import arg_parser as myArgParser, server_checker as myServerChecker, errors as myErrors
+from src import arg_parser as myArgParser, server_utils as myServerUtils, errors as myErrors
 import io
 import requests
 import requests_mock
@@ -101,6 +101,10 @@ def step_impl(context, value, target):
 	assert(target in context.parsedArgs)
 	assert(context.parsedArgs[target] == value)
 
+@then('config has "{target}"')
+def step_impl(context, target):
+	assert(target in context.parsedArgs)
+
 @when('I start the program')
 def step_impl(context):
 	raise NotImplementedError('STEP: When I start the program')
@@ -152,7 +156,7 @@ def step_impl(context):
 	try:
 		with requests_mock.Mocker() as m:
 			context.registerRequestsMock(m)
-			myServerChecker.check(context.myConfig)
+			myServerUtils.check(context.myConfig)
 
 		context.raisedException = False
 	except myErrors.MyError as err:

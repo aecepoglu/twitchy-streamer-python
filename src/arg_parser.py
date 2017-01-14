@@ -3,9 +3,14 @@ import yaml
 import collections
 import sys
 import os
+from urllib.parse import urlsplit
 from .errors import MyError
+from .version import VERSION
 
 def _update(d, u):
+	if type(u) is not dict:
+		return d
+
 	for k, v in u.items():
 		if isinstance(v, list) and k in d:
 			d[k] = d[k] + v
@@ -31,7 +36,9 @@ def parse(args):
 	parsed = parser.parse_args(args)
 	result = {
 		#default values here
-		"target": parsed.path[0]
+		"target": parsed.path[0],
+		"includes": [],
+		"excludes": []
 	}
 
 	if not parsed.configs:
@@ -56,5 +63,14 @@ def parse(args):
 
 	if "publishLink" not in result:
 		raise MyError("publishLink couldn't be read")
+	#else:
+	#	for pair in urlsplit(result["publishLink"]).query.split("&"):
+	#		l = pair.split("=")
+	#		print(l)
+	#		if l[0] == "key":
+	#			result["publishKey"] = l[1];
+	#			break
+
+	result["version"] = VERSION
 
 	return result

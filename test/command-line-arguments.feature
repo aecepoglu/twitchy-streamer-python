@@ -30,6 +30,7 @@ And config has "secret.py" in "excludes" list
 And config has "twitchy-config.yml" in "excludes" list
 And config has "my-publish-link" at "publishLink"
 And config has "watched-dir" at "target"
+And config has "version"
 
 Scenario: User is prompted to download default config
 Given program arguments are "watched-dir"
