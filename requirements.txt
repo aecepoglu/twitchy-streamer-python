@@ -1,5 +1,0 @@
-pyyaml
-argparse
-semver
-requests
-watchdog
