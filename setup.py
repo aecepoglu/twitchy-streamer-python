@@ -15,10 +15,11 @@ setup(
 		"console_scripts": ["twitchy-streamer=twitchy_streamer.__main__:main"]
 	},
 	install_requires = [
-		"pyyaml",
 		"argparse",
-		"semver",
+		"pydle",
+		"pyyaml",
 		"requests",
+		"semver",
 		"watchdog"
 	]
 )

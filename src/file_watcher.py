@@ -4,6 +4,8 @@ import time
 
 events = {}
 
+stopped = False
+
 class MyHandler(PatternMatchingEventHandler):
 	def __init__(self, config, uploader):
 		super().__init__(
@@ -14,7 +16,7 @@ class MyHandler(PatternMatchingEventHandler):
 		self.uploader = uploader
 
 	def on_moved(self, ev):
-		self.uploader.send(ev.dest_path, "moved", source = ev.src_path)
+		url = self.uploader.send(ev.dest_path, "moved", source = ev.src_path)
 
 	def on_any_event(self, ev):
 		if ev.event_type == "moved":
@@ -31,9 +33,13 @@ class MyHandler(PatternMatchingEventHandler):
 				"ticks": 0
 			}
 				
+def stop():
+	global running
+	running = False
 
-def watch(config, Uploader):
-	uploader = Uploader(config)
+def watch(config, uploader):
+	global running
+	running = True
 
 	myHandler = MyHandler(config, uploader)
 	observer = Observer()
@@ -43,16 +49,21 @@ def watch(config, Uploader):
 
 	observer.start()
 
-	try:
-		while True:
-			for key, value in events.copy().items():
-				if value["ticks"] >= 1:
-					uploader.send(key, value["type"])
-					del events[key]
-				else:
-					value["ticks"] = value["ticks"] + 1
-			time.sleep(5)
-	except KeyboardInterrupt:
-		observer.stop()
+	while running:
+		for key, value in events.copy().items():
+			if value["ticks"] >= 1:
+				uploader.send(key, value["type"])
+				del events[key]
+			else:
+				value["ticks"] = value["ticks"] + 1
+		time.sleep(5)
 
+	observer.stop()
 	observer.join()
+
+	global stopped
+	stopped = True
+
+def isStopped():
+	global stopped
+	return stopped

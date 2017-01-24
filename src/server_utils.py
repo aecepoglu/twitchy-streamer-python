@@ -34,9 +34,10 @@ def mergeIgnores(config):
 	return config
 
 class Uploader:
-	def __init__(self, config):
+	def __init__(self, config, irc=None):
 		self.publishLink = config["publishLink"]
 		self.rootPath = config["target"]
+		self.irc = irc
 		pass
 
 	def send(self, filepath, eventType, source=None):
@@ -56,10 +57,13 @@ class Uploader:
 
 			r = requests.post(self.publishLink, params = params)
 		else:
-			with open(filepath) as fp:
+			with open(filepath, "rb") as fp:
 				r = requests.post(self.publishLink, files = {
 					"file": fp
 				}, params = params)
 
 			if r.status_code >= 400:
 				print(r.text)
+			elif self.irc is not None:
+				print(r.text)
+				self.irc.mymessage("updated " + r.text)
