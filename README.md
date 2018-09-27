@@ -4,7 +4,8 @@ Python client for twitchy-streamer server
 
 ### To Install
 
-    ...
+    python3 setup.py build
+    python3 setup.py install
 
 ### To Run
 
@@ -12,7 +13,6 @@ Python client for twitchy-streamer server
 
 ### To Test
 
-    pip install -r dependencies.txt
     pip install -r dev-requirements.txt
     behave test/
 
